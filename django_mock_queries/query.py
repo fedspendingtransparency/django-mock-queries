@@ -117,6 +117,49 @@ class MockSet(MagicMock):
     def exists(self):
         return len(self.items) > 0
 
+    def annotate(self, *args, **kwargs):
+        results = {}
+
+        # columns provided in .values() that will be included in the GROUP BY clause
+        if len(self.items) == 0:
+            # Return empty mock set if there are no valid items to group by (aliased columns are considered invalid)
+            return MockSet(clone=self)
+
+        group_cols = self.items[0]
+
+        for alias, expr in kwargs.items():
+            values = []
+            expr_result = None
+
+            # Getting all results to aggregate on based on the grouping columns provided above
+            master_items = self.clone.filter(**group_cols)
+
+            for x in master_items:
+                val = get_attribute(x, expr.source_expressions[0].name)[0]
+                if val is None:
+                    continue
+                values.extend(val if is_list_like_iter(val) else [val])
+
+            if len(values) > 0:
+                expr_result = {
+                    AGGREGATES_SUM: lambda: sum(values),
+                    AGGREGATES_COUNT: lambda: len(values),
+                    AGGREGATES_MAX: lambda: max(values),
+                    AGGREGATES_MIN: lambda: min(values),
+                    AGGREGATES_AVG: lambda: sum(values) / len(values)
+                }[expr.function]()
+
+            if len(values) == 0 and expr.function == AGGREGATES_COUNT:
+                expr_result = 0
+
+            results[alias] = expr_result
+
+        # Include the grouping column in the result since that typically happens by default when calling
+        # queryset.filter(...).values(...).annotate(...)
+        results.update(group_cols)
+
+        return MockSet(results, clone=self)
+
     def aggregate(self, *args, **kwargs):
         result = {}
 
@@ -307,6 +350,36 @@ class MockSet(MagicMock):
                 self.fire(obj, self.EVENT_UPDATED, self.EVENT_SAVED)
             return obj, False
 
+    # def _item_values_aliased(self, item, field_dict):
+    #     field_buckets = {}
+    #     result_count = 1
+    #
+    #     if len(field_dict) == 0:
+    #         field_names = [f.attname for f in item._meta.concrete_fields]
+    #     else:
+    #         field_names = list(field_dict.keys())
+    #
+    #     for field in sorted(field_names, key=lambda k: k.count('__')):
+    #         value = get_attribute(item, field)[0]
+    #
+    #         if is_list_like_iter(value):
+    #             value = flatten_list(value)
+    #             result_count = max(result_count, len(value))
+    #
+    #             for bucket, data in field_buckets.items():
+    #                 while len(data) < result_count:
+    #                     data.append(data[-1])
+    #
+    #             field_buckets[field_dict[field]] = value
+    #         else:
+    #             field_buckets[field_dict[field]] = [value]
+    #
+    #     item_values = []
+    #     for i in range(result_count):
+    #         item_values.append({k: v[i] for k, v in field_buckets.items()})
+    #
+    #     return item_values
+
     def _item_values(self, item, fields):
         field_buckets = {}
         result_count = 1
@@ -337,12 +410,28 @@ class MockSet(MagicMock):
 
         return item_values
 
-    def values(self, *fields):
+    def values(self, *args, **kwargs):
+        """
+        Used for populating fields in a SELECT query with or without aliasing
+        :param fields: fields for which to retrieve data
+        :return: set of objects with only the fields specified and their respective values
+        """
+        fields = args
+        # field_dict = {}
         result = []
 
-        for item in self.items:
-            item_values = self._item_values(item, fields)
-            result.extend(item_values)
+        # for alias, expr in kwargs.items():
+        #     field_dict[expr.name] = alias
+        #
+        # if len(field_dict) > 0:
+        #     for item in self.items:
+        #         item_values = self._item_values_aliased(item, field_dict)
+        #         result.extend(item_values)
+
+        if len(fields) > 0:
+            for item in self.items:
+                item_values = self._item_values(item, fields)
+                result.extend(item_values)
 
         return MockSet(*result, clone=self)
 
