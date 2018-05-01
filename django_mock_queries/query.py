@@ -118,47 +118,50 @@ class MockSet(MagicMock):
         return len(self.items) > 0
 
     def annotate(self, *args, **kwargs):
-        results = {}
+        results = []
 
         # columns provided in .values() that will be included in the GROUP BY clause
         if len(self.items) == 0:
             # Return empty mock set if there are no valid items to group by (aliased columns are considered invalid)
             return MockSet(clone=self)
 
-        group_cols = self.items[0]
+        unique_group_cols = [dict(t) for t in set([tuple(d.items()) for d in self.items])]
 
-        for alias, expr in kwargs.items():
-            values = []
-            expr_result = None
+        for group_cols in unique_group_cols:
+            result_dict = {}
+            for alias, expr in kwargs.items():
+                values = []
+                expr_result = None
 
-            # Getting all results to aggregate on based on the grouping columns provided above
-            master_items = self.clone.filter(**group_cols)
+                # Getting all results to aggregate on based on the grouping columns provided above
+                master_items = self.clone.filter(**group_cols)
 
-            for x in master_items:
-                val = get_attribute(x, expr.source_expressions[0].name)[0]
-                if val is None:
-                    continue
-                values.extend(val if is_list_like_iter(val) else [val])
+                for x in master_items:
+                    val = get_attribute(x, expr.source_expressions[0].name)[0]
+                    if val is None:
+                        continue
+                    values.extend(val if is_list_like_iter(val) else [val])
 
-            if len(values) > 0:
-                expr_result = {
-                    AGGREGATES_SUM: lambda: sum(values),
-                    AGGREGATES_COUNT: lambda: len(values),
-                    AGGREGATES_MAX: lambda: max(values),
-                    AGGREGATES_MIN: lambda: min(values),
-                    AGGREGATES_AVG: lambda: sum(values) / len(values)
-                }[expr.function]()
+                if len(values) > 0:
+                    expr_result = {
+                        AGGREGATES_SUM: lambda: sum(values),
+                        AGGREGATES_COUNT: lambda: len(values),
+                        AGGREGATES_MAX: lambda: max(values),
+                        AGGREGATES_MIN: lambda: min(values),
+                        AGGREGATES_AVG: lambda: sum(values) / len(values)
+                    }[expr.function]()
 
-            if len(values) == 0 and expr.function == AGGREGATES_COUNT:
-                expr_result = 0
+                if len(values) == 0 and expr.function == AGGREGATES_COUNT:
+                    expr_result = 0
 
-            results[alias] = expr_result
+                result_dict[alias] = expr_result
 
-        # Include the grouping column in the result since that typically happens by default when calling
-        # queryset.filter(...).values(...).annotate(...)
-        results.update(group_cols)
+            # Include the grouping column in the result since that typically happens by default when calling
+            # queryset.filter(...).values(...).annotate(...)
+            result_dict.update(group_cols)
+            results.append(result_dict)
 
-        return MockSet(results, clone=self)
+        return MockSet(*results, clone=self)
 
     def aggregate(self, *args, **kwargs):
         result = {}
