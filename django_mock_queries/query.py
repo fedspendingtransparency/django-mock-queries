@@ -198,11 +198,23 @@ class MockSet(MagicMock):
     def order_by(self, *fields):
         results = self.items
         for field in reversed(fields):
-            is_reversed = field.startswith('-')
-            attr = field[1:] if is_reversed else field
-            results = sorted(results,
+            if type(field) == str:  # original, for simple orderby functions
+                is_reversed = field.startswith('-')
+                attr = field[1:] if is_reversed else field
+                results = sorted(results,
+                                 key=lambda r: get_attribute(r, attr),
+                                 reverse=is_reversed)
+            else:
+                # for more complicated orderby functions which is type OrderBy()
+                try:
+                    is_reversed = field.descending
+                    attr = field.expression.name
+                    results = sorted(results,
                              key=lambda r: get_attribute(r, attr),
                              reverse=is_reversed)
+                except Exception as e:
+                    raise Exception(e)
+
         return MockSet(*results, clone=self)
 
     def distinct(self, *fields):
