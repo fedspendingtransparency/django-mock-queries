@@ -36,6 +36,12 @@ class TestUtils(TestCase):
         assert value == 'test'
         assert comparison is None
 
+    def test_get_attribute_returns_false_when_value_is_false(self):
+        obj = MagicMock(foo=False)
+        value, comparison = utils.get_attribute(obj, 'foo')
+        assert value is False
+        assert comparison is None
+
     def test_get_attribute_returns_value_with_defined_comparison(self):
         obj = MagicMock(foo='test')
         value, comparison = utils.get_attribute(obj, 'foo__' + constants.COMPARISON_IEXACT)
@@ -292,3 +298,13 @@ class TestUtils(TestCase):
 
         result = utils.is_match('a', ('b', 'c'), constants.COMPARISON_RANGE)
         assert result is False
+
+    def test_matches_with_range(self):
+        source = [
+            MagicMock(foo=1),
+            MagicMock(foo=3),
+        ]
+
+        results = utils.matches(*source, foo__range=(1, 2))
+        assert source[0] in results
+        assert source[1] not in results
