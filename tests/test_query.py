@@ -1199,3 +1199,30 @@ class TestQuery(TestCase):
         assert len(result) == 2
         assert result[0] == datetime.datetime(2017, 1, 10, 1, 2, 9)
         assert result[1] == datetime.datetime(2017, 1, 10, 1, 2, 3)
+
+    def test_or_merge_queryset(self):
+        qs = MockSet(
+            MockModel(mock_name='model-1', foo='A', bar='1'),
+            MockModel(mock_name='model-2', foo='B', bar='2'),
+            MockModel(mock_name='model-3', foo='C', bar='3'),
+        )
+
+        test_qs = qs.all().filter(Q(foo='A'))
+        test_qs |= qs.all().filter(Q(bar='2'))
+        expected_results = ['model-1', 'model-2']
+        results = [str(x) for x in test_qs]
+        assert results == expected_results
+
+
+    def test_and_merge_queryset(self):
+        qs = MockSet(
+            MockModel(mock_name='model-1', foo='A', bar='1'),
+            MockModel(mock_name='model-2', foo='B', bar='1'),
+            MockModel(mock_name='model-3', foo='C', bar='3'),
+        )
+
+        test_qs = qs.all().filter(Q(foo='A'))
+        test_qs &= test_qs.all().filter(Q(bar='1'))
+        expected_results = ['model-1']
+        results = [str(x) for x in test_qs]
+        assert results == expected_results
