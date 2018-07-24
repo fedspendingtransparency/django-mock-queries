@@ -1213,7 +1213,6 @@ class TestQuery(TestCase):
         results = [str(x) for x in test_qs]
         assert results == expected_results
 
-
     def test_and_merge_queryset(self):
         qs = MockSet(
             MockModel(mock_name='model-1', foo='A', bar='1'),
