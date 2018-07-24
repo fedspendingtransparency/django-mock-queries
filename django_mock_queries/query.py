@@ -199,7 +199,7 @@ class MockSet(MagicMock):
     def order_by(self, *fields):
         results = self.items
         for field in reversed(fields):
-            if type(field) == str:  # original, for simple orderby functions
+            if isinstance(field, str):  # original, for simple orderby functions
                 is_reversed = field.startswith('-')
                 attr = field[1:] if is_reversed else field
             else:
@@ -210,10 +210,10 @@ class MockSet(MagicMock):
                 except Exception as e:
                     raise Exception(e)
 
-        results = sorted(
-            results,
-            key=lambda r: get_attribute(r, attr),
-            reverse=is_reversed)
+            results = sorted(
+                results,
+                key=lambda r: get_attribute(r, attr),
+                reverse=is_reversed)
 
         return MockSet(*results, clone=self)
 
@@ -443,10 +443,9 @@ class MockSet(MagicMock):
         #         item_values = self._item_values_aliased(item, field_dict)
         #         result.extend(item_values)
 
-        if len(fields) > 0:
-            for item in self.items:
-                item_values = self._item_values(item, fields)
-                result.extend(item_values)
+        for item in self.items:
+            item_values = self._item_values(item, fields)
+            result.extend(item_values)
 
         return MockSet(*result, clone=self)
 
