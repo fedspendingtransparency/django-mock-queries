@@ -442,10 +442,9 @@ class MockSet(MagicMock):
         #         item_values = self._item_values_aliased(item, field_dict)
         #         result.extend(item_values)
 
-        if len(fields) > 0:
-            for item in self.items:
-                item_values = self._item_values(item, fields)
-                result.extend(item_values)
+        for item in self.items:
+            item_values = self._item_values(item, fields)
+            result.extend(item_values)
 
         return MockSet(*result, clone=self)
 
