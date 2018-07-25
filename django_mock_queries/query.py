@@ -38,6 +38,7 @@ class MockSet(MagicMock):
         self.clone = clone
         self.model = getattr(clone, 'model', model)
         self.events = {}
+        self.filter_obj = kwargs.pop('filter_obj', DjangoQ())
 
         self.add(*initial_items)
 
@@ -45,6 +46,8 @@ class MockSet(MagicMock):
         self.__iter__ = lambda s: iter(s.items)
         self.__getitem__ = lambda s, k: self.items[k]
         self.__bool__ = self.__nonzero__ = lambda s: len(s.items) > 0
+        self.__and__ = self.and_
+        self.__or__ = self.or_
 
     def _return_self(self, *_, **__):
         return self
@@ -79,6 +82,21 @@ class MockSet(MagicMock):
             self.items.append(model)
             self.fire(model, self.EVENT_ADDED, self.EVENT_SAVED)
 
+    def and_(self, source, other):
+        if source.items == 0:
+            return source
+        if other.items == 0:
+            return other
+        return self.filter(source.filter_obj & other.filter_obj)
+
+    def or_(self, source, other):
+        if source.items == 0:
+            return other
+        if other.items == 0:
+            return source
+        self.items = list(set(self.items) | (set(other.items)))
+        return self.filter(source.filter_obj | other.filter_obj)
+
     def _filter_single_q(self, source, q_obj, negated):
         if isinstance(q_obj, DjangoQ):
             return self._filter_q(source, q_obj)
@@ -103,12 +121,17 @@ class MockSet(MagicMock):
 
     def filter(self, *args, **attrs):
         results = list(self.items)
+        new_filter_object = None
         for x in args:
             if isinstance(x, DjangoQ):
                 results = self._filter_q(results, x)
+                if new_filter_object:
+                    new_filter_object &= x
+                else:
+                    new_filter_object = x
             else:
                 raise ArgumentNotSupported()
-        return MockSet(*matches(*results, **attrs), clone=self)
+        return MockSet(*matches(*results, **attrs), clone=self, filter_obj=new_filter_object)
 
     def exclude(self, *args, **attrs):
         excluded = self.filter(*args, **attrs)
