@@ -142,7 +142,6 @@ class MockSet(MagicMock):
 
     def extract(self, expression, values):
         date = values[0]
-        time_delta = 0
         if not getattr(expression, 'template'):
             raise ValueError('Extract function does not include template: {}'.format(expression))
         regex = "\%\(function\)s\((\w+) from \(%\(expressions\)s\) ([+-]{1}) INTERVAL '(\d+) (\w+)'\)"
@@ -158,9 +157,9 @@ class MockSet(MagicMock):
         else:
             extract_type = original_extract_type
         # final = getattr(date, extract_type.lower())
-        final = getattr(date + relativedelta(**{interval_type.lower():amount*sign}), extract_type.lower())
+        final = getattr(date + relativedelta(**{interval_type.lower(): amount * sign}), extract_type.lower())
         if original_extract_type.lower() == 'quarter':
-            final = ((final-1) // 3) + 1
+            final = ((final - 1) // 3) + 1
         return final
 
     def annotate(self, *args, **kwargs):
