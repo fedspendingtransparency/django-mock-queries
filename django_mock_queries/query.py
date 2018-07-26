@@ -107,8 +107,6 @@ class MockSet(MagicMock):
 
     def _filter_q(self, source, query):
         results = []
-        if len(query.children) == 0:
-            return source
         for child in query.children:
             filtered = self._filter_single_q(source, child, query.negated)
 
