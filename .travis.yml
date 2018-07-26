@@ -5,15 +5,15 @@ sudo: false
 matrix:
   fast_finish: true
   include:
-    - python: 2.7
-      env:
-      - TOX_ENV=py27-dj18-drf33
-      - TOX_ENV=py27-dj19-drf33
-      - TOX_ENV=py27-dj110-drf33
-      - TOX_ENV=py27-dj111-drf37
-    - python: 3.3
-      env:
-      - TOX_ENV=py33-dj18-drf33
+#    - python: 2.7
+#      env:
+#      - TOX_ENV=py27-dj18-drf33
+#      - TOX_ENV=py27-dj19-drf33
+#      - TOX_ENV=py27-dj110-drf33
+#      - TOX_ENV=py27-dj111-drf37
+#    - python: 3.3
+#      env:
+#      - TOX_ENV=py33-dj18-drf33
     - python: 3.4
       env:
       - TOX_ENV=py34-dj18-drf33
