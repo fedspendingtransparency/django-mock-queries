@@ -1227,6 +1227,7 @@ class TestQuery(TestCase):
         test_qs |= qs.all().filter(Q(bar='2'))
         expected_results = ['model-1', 'model-2']
         results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
         assert sorted(results) == sorted(expected_results)
 
         # Test with empty filter
@@ -1234,6 +1235,7 @@ class TestQuery(TestCase):
         test_qs |= qs.all()
         expected_results = ['model-1']
         results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
         assert sorted(results) == sorted(expected_results)
 
     def test_and_merge_queryset(self):
@@ -1247,10 +1249,12 @@ class TestQuery(TestCase):
         test_qs &= test_qs.all().filter(Q(bar='1'))
         expected_results = ['model-1']
         results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
         assert sorted(results) == sorted(expected_results)
 
         test_qs = qs.all().filter(Q(foo='A'))
         test_qs &= test_qs.all()
         expected_results = ['model-1']
         results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
         assert sorted(results) == sorted(expected_results)
