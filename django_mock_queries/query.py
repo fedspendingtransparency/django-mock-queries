@@ -1,4 +1,6 @@
 import datetime
+import re
+from dateutil.relativedelta import relativedelta
 from collections import OrderedDict
 from mock import Mock, MagicMock, PropertyMock
 
@@ -83,16 +85,16 @@ class MockSet(MagicMock):
             self.fire(model, self.EVENT_ADDED, self.EVENT_SAVED)
 
     def and_(self, source, other):
-        if source.items == 0:
+        if len(source.items) == 0:
             return source
-        if other.items == 0:
+        if len(other.items) == 0:
             return other
         return self.filter(source.filter_obj & other.filter_obj)
 
     def or_(self, source, other):
-        if source.items == 0:
+        if len(source.items) == 0:
             return other
-        if other.items == 0:
+        if len(other.items) == 0:
             return source
         self.items = list(set(self.items) | (set(other.items)))
         return self.filter(source.filter_obj | other.filter_obj)
@@ -105,7 +107,6 @@ class MockSet(MagicMock):
 
     def _filter_q(self, source, query):
         results = []
-
         for child in query.children:
             filtered = self._filter_single_q(source, child, query.negated)
 
@@ -116,19 +117,15 @@ class MockSet(MagicMock):
                     results = intersect(results, filtered)
             elif query.connector == CONNECTORS_AND:
                 return []
-
         return results
 
     def filter(self, *args, **attrs):
         results = list(self.items)
-        new_filter_object = None
+        new_filter_object = DjangoQ()
         for x in args:
             if isinstance(x, DjangoQ):
                 results = self._filter_q(results, x)
-                if new_filter_object:
-                    new_filter_object &= x
-                else:
-                    new_filter_object = x
+                new_filter_object &= x
             else:
                 raise ArgumentNotSupported()
         return MockSet(*matches(*results, **attrs), clone=self, filter_obj=new_filter_object)
@@ -141,6 +138,27 @@ class MockSet(MagicMock):
     def exists(self):
         return len(self.items) > 0
 
+    def extract(self, expression, values):
+        date = values[0]
+        if not getattr(expression, 'template'):
+            raise ValueError('Extract function does not include template: {}'.format(expression))
+        regex = '\%\(function\)s\((\w+) from \(%\(expressions\)s\) ([+-]{1}) INTERVAL \'(\d+) (\w+)\'\)'
+        result = re.findall(regex, expression.template)
+        if not result:
+            raise ValueError('Template does not match with regex: {}'.format(expression.template))
+        original_extract_type = result[0][0]
+        sign = 1 if result[0][1] == '+' else -1
+        amount = int(result[0][2])
+        interval_type = result[0][3]
+        if original_extract_type.lower() == 'quarter':
+            extract_type = 'month'
+        else:
+            extract_type = original_extract_type
+        final = getattr(date + relativedelta(**{interval_type.lower(): amount * sign}), extract_type.lower())
+        if original_extract_type.lower() == 'quarter':
+            final = ((final - 1) // 3) + 1
+        return final
+
     def annotate(self, *args, **kwargs):
         results = []
 
@@ -149,7 +167,8 @@ class MockSet(MagicMock):
             # Return empty mock set if there are no valid items to group by (aliased columns are considered invalid)
             return MockSet(clone=self)
 
-        unique_group_cols = [dict(t) for t in set([tuple(d.items()) for d in self.items])]
+        unique_group_cols = [dict(t) for t in set(
+            [tuple([x for x in d.items() if x[0] not in ['save', '_MockModel__meta']]) for d in self.items])]
 
         for group_cols in unique_group_cols:
             result_dict = {}
@@ -172,7 +191,8 @@ class MockSet(MagicMock):
                         AGGREGATES_COUNT: lambda: len(values),
                         AGGREGATES_MAX: lambda: max(values),
                         AGGREGATES_MIN: lambda: min(values),
-                        AGGREGATES_AVG: lambda: sum(values) / len(values)
+                        AGGREGATES_AVG: lambda: sum(values) / len(values),
+                        EXTRACT: lambda: self.extract(expr, values)
                     }[expr.function]()
 
                 if len(values) == 0 and expr.function == AGGREGATES_COUNT:

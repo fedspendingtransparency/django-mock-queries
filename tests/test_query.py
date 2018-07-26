@@ -1227,7 +1227,16 @@ class TestQuery(TestCase):
         test_qs |= qs.all().filter(Q(bar='2'))
         expected_results = ['model-1', 'model-2']
         results = [str(x) for x in test_qs]
-        assert results == expected_results
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
+        assert sorted(results) == sorted(expected_results)
+
+        # Test with empty filter
+        test_qs = qs.all().filter(Q(foo='A'))
+        test_qs |= qs.all()
+        expected_results = ['model-1']
+        results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
+        assert sorted(results) == sorted(expected_results)
 
     def test_and_merge_queryset(self):
         qs = MockSet(
@@ -1240,4 +1249,37 @@ class TestQuery(TestCase):
         test_qs &= test_qs.all().filter(Q(bar='1'))
         expected_results = ['model-1']
         results = [str(x) for x in test_qs]
-        assert results == expected_results
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
+        assert sorted(results) == sorted(expected_results)
+
+        test_qs = qs.all().filter(Q(foo='A'))
+        test_qs &= test_qs.all()
+        expected_results = ['model-1']
+        results = [str(x) for x in test_qs]
+        # Note: the results may come in various orders, and since we're just focused on the content, we can sort
+        assert sorted(results) == sorted(expected_results)
+
+    def test_extract_success(self):
+        qs = MockSet()
+
+        class TestExpression():
+            def __init__(self, template):
+                self.template = template
+
+        template = '%(function)s(MONTH from (%(expressions)s) + INTERVAL \'3 months\')'
+        value = datetime.datetime(2007, 10, 1)
+        expected_result = 1
+        result = qs.extract(TestExpression(template), [value])
+        assert expected_result == result
+
+        template = "%(function)s(QUARTER from (%(expressions)s) + INTERVAL '3 months')"
+        value = datetime.datetime(2008, 1, 1)
+        expected_result = 2
+        result = qs.extract(TestExpression(template), [value])
+        assert expected_result == result
+
+        template = "%(function)s(YEAR from (%(expressions)s) + INTERVAL '3 months')"
+        value = datetime.datetime(2007, 10, 1)
+        expected_result = 2008
+        result = qs.extract(TestExpression(template), [value])
+        assert expected_result == result

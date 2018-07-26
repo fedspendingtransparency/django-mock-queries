@@ -1,3 +1,4 @@
 mock
 model_mommy>=1.5.1
 Django>=1.8.17,<2.0.99
+python-dateutil==2.6.0
