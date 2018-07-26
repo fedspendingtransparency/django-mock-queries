@@ -88,6 +88,7 @@ AGGREGATES = (
     AGGREGATES_MIN,
     AGGREGATES_AVG,
 )
+EXTRACT = 'EXTRACT'
 
 DjangoQ = locate('django.db.models.Q')
 DjangoQuerySet = locate('django.db.models.QuerySet')
