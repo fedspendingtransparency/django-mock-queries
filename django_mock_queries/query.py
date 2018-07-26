@@ -142,7 +142,7 @@ class MockSet(MagicMock):
         date = values[0]
         if not getattr(expression, 'template'):
             raise ValueError('Extract function does not include template: {}'.format(expression))
-        regex = "\%\(function\)s\((\w+) from \(%\(expressions\)s\) ([+-]{1}) INTERVAL '(\d+) (\w+)'\)"
+        regex = '\%\(function\)s\((\w+) from \(%\(expressions\)s\) ([+-]{1}) INTERVAL \'(\d+) (\w+)\'\)'
         result = re.findall(regex, expression.template)
         if not result:
             raise ValueError('Template does not match with regex: {}'.format(expression.template))
@@ -154,7 +154,6 @@ class MockSet(MagicMock):
             extract_type = 'month'
         else:
             extract_type = original_extract_type
-        # final = getattr(date, extract_type.lower())
         final = getattr(date + relativedelta(**{interval_type.lower(): amount * sign}), extract_type.lower())
         if original_extract_type.lower() == 'quarter':
             final = ((final - 1) // 3) + 1
@@ -168,10 +167,7 @@ class MockSet(MagicMock):
             # Return empty mock set if there are no valid items to group by (aliased columns are considered invalid)
             return MockSet(clone=self)
 
-        unique_group_cols = [dict(t) for t in set([tuple(d.items()) for d in self.items])]
-        for col in ['save', '_MockModel__meta']:
-            if col in unique_group_cols[0]:
-                del unique_group_cols[0][col]
+        unique_group_cols = [dict(t) for t in set([tuple(d.get_fields()) for d in self.items])]
 
         for group_cols in unique_group_cols:
             result_dict = {}
