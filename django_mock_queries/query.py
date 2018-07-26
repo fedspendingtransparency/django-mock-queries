@@ -167,7 +167,8 @@ class MockSet(MagicMock):
             # Return empty mock set if there are no valid items to group by (aliased columns are considered invalid)
             return MockSet(clone=self)
 
-        unique_group_cols = [dict(t) for t in set([tuple(d.get_fields()) for d in self.items])]
+        unique_group_cols = [dict(t) for t in set(
+            [tuple([x for x in d.items() if x[0] not in ['save', '_MockModel__meta']]) for d in self.items])]
 
         for group_cols in unique_group_cols:
             result_dict = {}
