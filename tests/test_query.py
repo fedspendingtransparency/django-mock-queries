@@ -1232,7 +1232,7 @@ class TestQuery(TestCase):
         # Test with empty filter
         test_qs = qs.all().filter(Q(foo='A'))
         test_qs |= qs.all()
-        expected_results = ['model-1', 'model-2', 'model-3']
+        expected_results = ['model-1']
         results = [str(x) for x in test_qs]
         assert sorted(results) == sorted(expected_results)
 
