@@ -21,7 +21,7 @@ def get_field_mapping(field):
     name = field.get_accessor_name()
     model_name = field.related_model._meta.model_name.lower()
 
-    if name[-4:] == '_set':
+    if name[-4:] == '_set' and name[:-4] == model_name:
         return {model_name: name}
     else:
         return {name: name}
@@ -124,7 +124,7 @@ def get_attribute(obj, attr, default=None):
 
 
 def is_match(first, second, comparison=None):
-    if isinstance(first, django_mock_queries.query.MockSet):
+    if is_list_like_iter(first):
         return is_match_in_children(comparison, first, second)
     if (isinstance(first, (int, str)) and
             isinstance(second, django_mock_queries.query.MockSet)):
